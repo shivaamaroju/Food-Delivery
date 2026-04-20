@@ -15,10 +15,14 @@ spec:
     spec:
       containers:
       - name: backend
-        image: shivaamaroju/food-backend:latest # Updated
+        image: shivaamaroju/food-backend:latest
+        imagePullPolicy: Always
         env:
         - name: MONGO_URL
-          value: "mongodb://mongodb:27017/food-db"
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: MONGO_URL
         ports:
         - containerPort: 5000
 ---
@@ -39,6 +43,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: shivaamaroju/food-frontend:latest # Updated
+        image: shivaamaroju/food-frontend:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 80

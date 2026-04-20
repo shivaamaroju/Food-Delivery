@@ -33,15 +33,16 @@ pipeline {
             }
         }
         
-        stage('Deploy to AKS') {
+       stage('Deploy to AKS') {
             steps {
                 withCredentials([file(credentialsId: 'aks-kubeconfig-file', variable: 'KUBECONFIG_PATH')]) {
-                    // FIX: Added 'k8s/' folder prefix. Adjust if your YAMLs are in root.
+                    // This line finds "IMAGE_TAG" in your file and replaces it with the actual Jenkins Build Number
+                    sh "sed -i 's|IMAGE_TAG|${BUILD_NUMBER}|g' deployment.yaml"
+                    
                     sh 'kubectl apply -f deployment.yaml --kubeconfig="$KUBECONFIG_PATH"'
                     
-                    // Force restart to pull the 'latest' image
-                    sh 'kubectl rollout restart deployment backend --kubeconfig="$KUBECONFIG_PATH"'
-                    sh 'kubectl rollout restart deployment frontend --kubeconfig="$KUBECONFIG_PATH"'
+                    // You don't need 'rollout restart' if you use dynamic tags, 
+                    // because K8s sees a new version number and updates automatically.
                 }
             }
         }

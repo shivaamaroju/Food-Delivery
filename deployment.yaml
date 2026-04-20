@@ -1,0 +1,44 @@
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: your_dockerhub_username/food-backend:IMAGE_TAG # Updated
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb:27017/food-db"
+        ports:
+        - containerPort: 5000
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: your_dockerhub_username/food-frontend:IMAGE_TAG # Updated
+        ports:
+        - containerPort: 80

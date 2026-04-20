@@ -1,48 +1,61 @@
 pipeline {
     agent any
-    
     environment {
-        DOCKER_USER = "shivaamaroju" // Change this
-        FRONTEND_IMAGE = "food-frontend"
-        BACKEND_IMAGE = "food-backend"
-        AKS_CLUSTER = "myAKSCluster"
-        RESOURCE_GROUP = "myResourceGroup"
+        DOCKER_USER = "shivaamaroju" 
+        BACKEND_IMG = "${DOCKER_USER}/food-backend"
+        FRONTEND_IMG = "${DOCKER_USER}/food-frontend"
     }
-
     stages {
-        stage('Checkout') {
+        stage('Docker Login') {
             steps {
-                git 'https://github.com/shivaamaroju/Food-Delivery.git'
-            }
-        }
-
-        stage('Build & Push to Docker Hub') {
-            steps {
-                script {
-                    docker.withRegistry('', 'docker-hub-credentials') {
-                        // Build and Push Backend
-                        def backend = docker.build("${DOCKER_USER}/${BACKEND_IMAGE}:${BUILD_NUMBER}", "./backend")
-                        backend.push()
-                        
-                        // Build and Push Frontend
-                        def frontend = docker.build("${DOCKER_USER}/${FRONTEND_IMAGE}:${BUILD_NUMBER}", "./frontend")
-                        frontend.push()
-                    }
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-token', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
+                    sh "echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin"
                 }
             }
         }
-
+        
+        stage('Build & Push Backend') {
+            steps {
+                dir('backend') { // Updated folder name
+                    sh "docker build -t ${BACKEND_IMG}:${BUILD_NUMBER} ."
+                    sh "docker tag ${BACKEND_IMG}:${BUILD_NUMBER} ${BACKEND_IMG}:latest"
+                    sh "docker push ${BACKEND_IMG}:latest"
+                    sh "docker push ${BACKEND_IMG}:${BUILD_NUMBER}"
+                }
+            }
+        }
+        
+        stage('Build & Push Frontend') {
+            steps {
+                dir('frontend') { // Updated folder name
+                    sh "docker build -t ${FRONTEND_IMG}:${BUILD_NUMBER} ."
+                    sh "docker tag ${FRONTEND_IMG}:${BUILD_NUMBER} ${FRONTEND_IMG}:latest"
+                    sh "docker push ${FRONTEND_IMG}:latest"
+                    sh "docker push ${FRONTEND_IMG}:${BUILD_NUMBER}"
+                }
+            }
+        }
+        
         stage('Deploy to AKS') {
             steps {
-                script {
-                    // Requires Azure CLI installed on Jenkins agent
-                    sh "az aks get-credentials --resource-group ${RESOURCE_GROUP} --name ${AKS_CLUSTER}"
+                withCredentials([file(credentialsId: 'aks-kubeconfig-file', variable: 'KUBECONFIG_PATH')]) {
+                    // Apply all manifests in the k8s folder
+                    sh 'kubectl apply -f k8s/ --kubeconfig="$KUBECONFIG_PATH"'
                     
-                    // Replace placeholder in YAML and apply
-                    sh "sed -i 's|IMAGE_TAG|${BUILD_NUMBER}|g' k8s/deployment.yaml"
-                    sh "kubectl apply -f k8s/"
+                    // Restart to pull the new 'latest' images
+                    sh 'kubectl rollout restart deployment backend --kubeconfig="$KUBECONFIG_PATH"'
+                    sh 'kubectl rollout restart deployment frontend --kubeconfig="$KUBECONFIG_PATH"'
                 }
             }
+        }
+    }
+    
+    post {
+        success {
+            echo "Successfully deployed to AKS!"
+        }
+        failure {
+            echo "Deployment failed. Check Jenkins logs."
         }
     }
 }

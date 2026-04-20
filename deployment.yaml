@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: your_dockerhub_username/food-backend:IMAGE_TAG # Updated
+        image: shivaamaroju/food-backend:IMAGE_TAG # Updated
         env:
         - name: MONGO_URL
           value: "mongodb://mongodb:27017/food-db"
@@ -39,6 +39,6 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: your_dockerhub_username/food-frontend:IMAGE_TAG # Updated
+        image: shivaamaroju/food-frontend:IMAGE_TAG # Updated
         ports:
         - containerPort: 80

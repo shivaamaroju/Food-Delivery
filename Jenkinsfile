@@ -19,32 +19,49 @@ pipeline {
                 script {
                     dir('backend') {
                         sh "docker build -t ${BACKEND_IMG}:${BUILD_NUMBER} ."
-                        sh "docker tag ${BACKEND_IMG}:${BUILD_NUMBER} ${BACKEND_IMG}:latest"
                         sh "docker push ${BACKEND_IMG}:${BUILD_NUMBER}"
+                        // Also push latest for redundancy
+                        sh "docker tag ${BACKEND_IMG}:${BUILD_NUMBER} ${BACKEND_IMG}:latest"
                         sh "docker push ${BACKEND_IMG}:latest"
                     }
                     dir('frontend') {
                         sh "docker build -t ${FRONTEND_IMG}:${BUILD_NUMBER} ."
-                        sh "docker tag ${FRONTEND_IMG}:${BUILD_NUMBER} ${FRONTEND_IMG}:latest"
                         sh "docker push ${FRONTEND_IMG}:${BUILD_NUMBER}"
+                        sh "docker tag ${FRONTEND_IMG}:${BUILD_NUMBER} ${FRONTEND_IMG}:latest"
                         sh "docker push ${FRONTEND_IMG}:latest"
                     }
                 }
             }
         }
         
-       stage('Deploy to AKS') {
+        stage('Deploy to AKS') {
             steps {
-                withCredentials([file(credentialsId: 'aks-kubeconfig-file', variable: 'KUBECONFIG_PATH')]) {
-                    // This line finds "IMAGE_TAG" in your file and replaces it with the actual Jenkins Build Number
-                    sh "sed -i 's|IMAGE_TAG|${BUILD_NUMBER}|g' deployment.yaml"
-                    
-                    sh 'kubectl apply -f deployment.yaml --kubeconfig="$KUBECONFIG_PATH"'
-                    
-                    // You don't need 'rollout restart' if you use dynamic tags, 
-                    // because K8s sees a new version number and updates automatically.
+                withCredentials([
+                    file(credentialsId: 'aks-kubeconfig-file', variable: 'KUBECONFIG_PATH'),
+                    string(credentialsId: 'mongo-url-secret', variable: 'MONGO_URI')
+                ]) {
+                    script {
+                        // 1. Create or Update ConfigMap (No file needed in GitHub)
+                        sh """
+                        kubectl create configmap backend-config \
+                          --from-literal=MONGO_URL='${MONGO_URI}' \
+                          --dry-run=client -o yaml | kubectl apply -f - --kubeconfig='${KUBECONFIG_PATH}'
+                        """
+
+                        // 2. Replace IMAGE_TAG placeholder with actual Build Number
+                        sh "sed -i 's|IMAGE_TAG|${BUILD_NUMBER}|g' deployment.yaml"
+                        
+                        // 3. Apply Deployment
+                        sh "kubectl apply -f deployment.yaml --kubeconfig='${KUBECONFIG_PATH}'"
+                    }
                 }
             }
+        }
+    }
+    
+    post {
+        success {
+            echo "Successfully deployed build #${BUILD_NUMBER} to AKS!"
         }
     }
 }

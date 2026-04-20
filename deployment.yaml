@@ -17,7 +17,7 @@ spec:
       - name: backend
         image: your_dockerhub_username/food-backend:IMAGE_TAG # Updated
         env:
-        - name: MONGO_URI
+        - name: MONGO_URL
           value: "mongodb://mongodb:27017/food-db"
         ports:
         - containerPort: 5000

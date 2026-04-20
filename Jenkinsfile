@@ -37,7 +37,7 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'aks-kubeconfig-file', variable: 'KUBECONFIG_PATH')]) {
                     // FIX: Added 'k8s/' folder prefix. Adjust if your YAMLs are in root.
-                    sh 'kubectl apply -f k8s/deployment.yaml --kubeconfig="$KUBECONFIG_PATH"'
+                    sh 'kubectl apply -f deployment.yaml --kubeconfig="$KUBECONFIG_PATH"'
                     
                     // Force restart to pull the 'latest' image
                     sh 'kubectl rollout restart deployment backend --kubeconfig="$KUBECONFIG_PATH"'

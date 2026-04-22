@@ -1,49 +1,47 @@
-# Backend Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
+  name: wanderlust-deployment
+  labels:
+    app: wanderlust
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: backend
+      app: wanderlust
   template:
     metadata:
       labels:
-        app: backend
+        app: wanderlust
     spec:
       containers:
-      - name: backend
-        image: shivaamaroju/food-backend:latest
-        imagePullPolicy: Always
+      - name: wanderlust-app
+        image: shivaamaroju/wanderlust:latest
+        ports:
+        - containerPort: 8082
         env:
         - name: MONGO_URL
           valueFrom:
-            configMapKeyRef:
-              name: backend-config
-              key: MONGO_URL
-        ports:
-        - containerPort: 5000
+            secretKeyRef:
+              name: mongo-secrets
+              key: MONGO_URI
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
 ---
-# Frontend Deployment
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Service
 metadata:
-  name: frontend
+  name: wanderlust-service
 spec:
-  replicas: 1
+  type: LoadBalancer  # Gives you the External IP
   selector:
-    matchLabels:
-      app: frontend
-  template:
-    metadata:
-      labels:
-        app: frontend
-    spec:
-      containers:
-      - name: frontend
-        image: shivaamaroju/food-frontend:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 80
+    app: wanderlust
+  ports:
+    - protocol: TCP
+      port: 80         # Access app at http://<External-IP>
+      targetPort: 8090

@@ -20,30 +20,23 @@ spec:
         env:
         - name: MONGO_URL
           valueFrom:
-            configMapKeyRef:
-              name: backend-config
+            secretKeyRef:
+              name: backend-secrets
               key: MONGO_URL
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: JWT_SECRET
+        - name: SALT
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: SALT
+        - name: STRIPE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: STRIPE_SECRET_KEY
         ports:
         - containerPort: 5000
----
-# Frontend Deployment
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: frontend
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: frontend
-  template:
-    metadata:
-      labels:
-        app: frontend
-    spec:
-      containers:
-      - name: frontend
-        image: shivaamaroju/food-frontend:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 80
